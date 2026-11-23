@@ -1,0 +1,87 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.1cm]{geometry}
+\usepackage{lmodern}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{document}
+
+\begin{center}
+  {\large\bfseries UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO}\\
+  Carrera de Ingeniería de Software\\[5pt]
+  {\large\bfseries AP-U1: AforoSeguro -- Control de aforo distribuido}\\
+  Informe del avance realizado\\[4pt]
+  \textbf{Estudiante:} Luis Alberto Paca Pilataza\\
+  \textbf{Asignatura:} Aplicaciones Distribuidas (ISR-701)\\
+  \textbf{Fecha:} 23 de noviembre de 2026
+\end{center}
+
+\textbf{Repositorio público:}\ \href{https://github.com/Luis-paca/AP-U1-Paca-Luis}{\texttt{github.com/Luis-paca/AP-U1-Paca-Luis}}
+
+\section*{1. Descripción del trabajo}
+El proyecto AforoSeguro busca que tres puertas consulten a un coordinador antes de permitir la entrada o salida de personas. El coordinador mantiene un contador general para evitar que el aforo autorizado sea superado. También se plantea identificar puertas que dejan de responder y registrar el orden de los eventos.
+
+En el repositorio quedaron cuatro archivos principales de Java y el archivo \texttt{config.properties}. A continuación se resume lo que puede identificarse al revisar ese código. Esto no significa que todas las funciones se hayan ejecutado correctamente.
+
+\begin{tabular}{@{}p{3.85cm}p{11.35cm}@{}}
+\toprule
+\textbf{Archivo} & \textbf{Avance identificado} \\
+\midrule
+\texttt{Coordinador.java} & Recibe conexiones TCP, comprueba el token y atiende solicitudes de entrada, salida y consulta. Incluye un contador protegido con \texttt{synchronized}, un modo inseguro y revisión de latidos. \\
+\texttt{Puerta.java} & Contiene las órdenes \texttt{entrar}, \texttt{salir} y \texttt{estado}. Envía peticiones al coordinador y contempla el caso en que no se pueda conectar. \\
+\texttt{PruebaCarga.java} & Prepara 30 solicitudes simultáneas (10 por puerta) y cuenta las respuestas permitidas, rechazadas y los errores. \\
+\texttt{OrdenTotal.java} & Lee los registros de los procesos y ordena las líneas por reloj de Lamport e identificador de proceso. \\
+\texttt{config.properties} & Define aforo 10, token, host local y puerto 5000. \\
+\bottomrule
+\end{tabular}
+
+\section*{2. Estado actual del proyecto}
+En la versión pública revisada no aparecen \texttt{Config.java}, \texttt{Protocolo.java} ni \texttt{RegistroLamport.\allowbreak java}, aunque las clases anteriores los utilizan. Por esta razón, \textbf{no se puede afirmar que el proyecto compile desde el repositorio actual}. Tampoco se encontraron las capturas de los escenarios ni los registros necesarios para comprobar resultados de ejecución. Esas partes se consideran pendientes de verificación.
+
+\newpage
+\section*{3. Escenarios solicitados y evidencias disponibles}
+El planteamiento pide documentar siete escenarios (E0 a E6) con capturas tomadas durante la práctica. En la versión pública consultada no se encontraron esas imágenes. La tabla indica, de forma separada, lo que aparece en el código y lo que faltó evidenciar.
+
+\small
+\begin{tabular}{@{}p{0.82cm}p{4.3cm}p{4.2cm}p{4.85cm}@{}}
+\toprule
+\textbf{Esc.} & \textbf{Prueba solicitada} & \textbf{Captura o registro} & \textbf{Interpretación del avance} \\
+\midrule
+E0 & Red desconectada y primer commit con código de sesión. & No se localizó captura de red; la validez de los códigos de sesión no se verificó. & El repositorio muestra seis commits, pero esto por sí solo no demuestra E0. \\
+E1 & Entradas por P1, P2 y P3; una salida por P2. & Sin captura de la operación. & Las órdenes están contempladas en \texttt{Puerta.java}; falta confirmar el total con una ejecución. \\
+E2 & Rechazo por aforo completo y token inválido. & Sin captura ni registro de rechazos. & El coordinador incluye esas comprobaciones, pero no se dispone de resultados observados. \\
+E3 & Treinta entradas simultáneas en los modos seguro e inseguro. & Sin cifras de ejecución verificables. & \texttt{PruebaCarga.java} prepara 30 tareas; no se presentan números como resultados reales. \\
+E4 & Detener P3 y comprobar caída y recuperación. & Sin captura ni registro de los cambios de estado. & El código incluye latidos y detección de ausencia; falta demostrar la prueba. \\
+E5 & Detener el coordinador e intentar entrar por P1. & Sin captura de la desconexión. & La puerta contempla el error de red y no autoriza la entrada si no recibe respuesta. \\
+E6 & Generar el orden total y encontrar dos pares causales. & No se localizó \texttt{orden\_total.log}. & La lógica de ordenación está escrita; no se pueden señalar pares reales sin registros. \\
+\bottomrule
+\end{tabular}
+\normalsize
+
+\section*{4. Datos que no fue posible comprobar}
+\textbf{Prueba E3:} en la rúbrica se piden las cifras de solicitudes permitidas, rechazadas y personas dentro para los dos modos. En este informe no se anotan cantidades porque no se dispone de archivos de salida verificables de la sesión.
+
+\textbf{Prueba E6:} también se solicitan dos pares de eventos en los que un envío ocurra antes de su recepción. Al no contar con el registro consolidado, no se incluyen ejemplos presentados como si fueran eventos reales de la prueba.
+
+\newpage
+\section*{5. Análisis de los mecanismos del sistema}
+\textbf{1. Concurrencia y modo inseguro.} El coordinador tiene una parte protegida con \texttt{synchronized}. Esto busca que dos solicitudes no revisen y cambien el contador al mismo tiempo. En el modo inseguro se revisa el valor, se espera 50 milisegundos y luego se actualiza; durante esa espera otras solicitudes podrían haber leído el mismo valor. Por eso se puede producir una condición de carrera. La protección ayuda a evitarlo, pero puede hacer que algunos hilos deban esperar. No se dispone de cifras verificadas para indicar qué ocurrió en E3.
+
+\textbf{2. Caída del coordinador y CAP.} En \texttt{Puerta.java}, cuando falla la conexión se muestra que la entrada no fue autorizada. Esta decisión evita aceptar personas sin consultar el contador central, pero también impide que el público siga entrando mientras el coordinador no responda. Se prioriza mantener una decisión coherente sobre el aforo frente a permitir entradas sin control. El sistema tiene un solo coordinador, por lo que esta prueba no demuestra por sí misma el comportamiento de un sistema replicado ante una partición de red, como plantea CAP.
+
+\textbf{3. Punto único de fallo.} Si el coordinador se detiene, las puertas no tienen otro proceso que autorice entradas. Como mejora, se podría disponer de un coordinador de respaldo y un mecanismo para elegirlo. El nuevo problema sería mantener iguales los contadores de ambos procesos: si cada uno acepta entradas por separado, podrían superar el límite.
+
+\textbf{4. Latencia de la red.} No es correcto suponer que los mensajes llegan de inmediato. El planteamiento establece latidos cada dos segundos y detección de caída luego de seis segundos sin recibirlos. Si una señal demora siete segundos, el coordinador podría marcar como caída una puerta que sigue funcionando. Por ello los tiempos de espera deben elegirse considerando la latencia de la red.
+
+\section*{6. Limitaciones y conclusión}
+El avance visible permite identificar la estructura de comunicación, las comprobaciones de acceso, el control del contador y los mecanismos previstos para latidos y orden lógico. Sin embargo, faltan clases auxiliares para compilar desde GitHub y no hay evidencias publicadas de los escenarios E0 a E6. El archivo \texttt{README.md} tampoco explica todavía cómo ejecutar el proyecto.
+
+En conclusión, se alcanzó a dejar parte del código organizado, pero \textbf{no corresponde declarar la evaluación como completada} sin poder ejecutar el proyecto y revisar sus resultados. El siguiente paso técnico sería completar los archivos auxiliares, comprobar cada escenario y conservar sus registros y capturas reales.
+
+\end{document}
